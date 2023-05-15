@@ -1,0 +1,12 @@
+tiny mini project: learn some basic computer vision techniques
+Sudoku solver from image.
+    - Scale and convert image to greyscale
+    - Apply adaptive gaussian binary thresholding
+    - Apply Canny edge detection
+    - Use Hough Lines algorithm to detect lines
+    - Crop sudoku cells using detected lines
+    - Use digit OCR to populate in memory sudoku board representation
+    - Pass sudoku board to the sudoku solver
+Using OpenCV to parse the sudoku board from the image.
+Plan to solve the sudoku puzzle.
+Plan to write a simple Tkinter GUI around it.
