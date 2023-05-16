@@ -1,6 +1,8 @@
 import sys
 import numpy as np
 import cv2 as opencv
+import pytesseract
+from solver import Cell
 
 # Extracting sudoku puzzle from the input image.
 class Puzzle():
@@ -20,18 +22,21 @@ class Puzzle():
         self.hlines = [] # Detected horizantal lines
         self.vlines = [] # Detected vertical lines
 
+        self.parsed_board = [[Cell() for x in range(9)] for y in range(9)]
+
     # Load, convert to grayscale, remove color, apply canny edge detection
     def load_image(self):
         self.img = opencv.imread(self.img_path)
         if self.img is None:
             sys.exit(f"Error when loading {self.img_path}")
  
-        self.img = opencv.resize(self.img, (self.size, self.size), interpolation = opencv.INTER_AREA)
+        self.img = opencv.resize(self.img, (self.size, self.size), 
+                                 fx=1.2, fy=1.2, interpolation = opencv.INTER_AREA)
         self.img = opencv.cvtColor(self.img, opencv.COLOR_BGR2GRAY)
         self.img = opencv.adaptiveThreshold(self.img, self.threshold_max,
-                                    opencv.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                    opencv.THRESH_BINARY,
-                                    self.block_size, self.threshold_c)
+                                            opencv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                            opencv.THRESH_BINARY,
+                                            self.block_size, self.threshold_c)
         self.colored_img = opencv.cvtColor(self.img, opencv.COLOR_GRAY2BGR)
         self.img = opencv.Canny(self.img, self.canny_min, self.canny_max)
  
@@ -65,11 +70,11 @@ class Puzzle():
                 coords[2] = self.size if x2 == self.size else x2 + 1
                 self.hlines.append(coords)
 
-        # Sort and remove close duplicates
-        # Now each list has a length of 9 (9x9)
         self.vlines.sort(key=lambda x: x[0])
         self.hlines.sort(key=lambda x: x[1])
 
+        # Sort and remove close duplicates
+        # Now each list has a length of 9 (9x9)
         hlen = len(self.hlines)
         vlen = len(self.vlines)
         self.hlines = [self.hlines[i] for i in range(1, hlen) if self.hlines[i][1] - self.hlines[i - 1][1] > min_gap]
@@ -78,31 +83,29 @@ class Puzzle():
     def debug_lines(self):
         print("Horizantal lines: ")
         for hl in self.hlines:
-            opencv.line(colored_img, (hl[0], hl[1]), (hl[2], hl[3]), (0, 0, 255), 1)
+            opencv.line(self.colored_img, (hl[0], hl[1]), (hl[2], hl[3]), (0, 0, 255), 1)
             print(f"Start: ({hl[0]},{hl[1]}) | End: ({hl[2]}, {hl[3]})") 
 
         print("\nVertical lines: ")
         for vl in self.vlines:
-            opencv.line(colored_img, (vl[0], vl[1]), (vl[2], vl[3]), (255, 0, 0), 1)
+            opencv.line(self.colored_img, (vl[0], vl[1]), (vl[2], vl[3]), (255, 0, 0), 1)
             print(f"Start: ({vl[0]},{vl[1]}) | End: ({vl[2]}, {vl[3]})") 
 
-        opencv.imshow("Detected lines", colored_img)
+        opencv.imshow("Detected lines", self.colored_img)
+        opencv.waitKey(0)
 
     # Crop sudoku cell from lines and detect the number that populates it
     def detect_numbers(self):
-        block = int(self.size / 9) # 9x9 grid
+        block = int(self.size / 9.5) # 9x9 grid
 
         for y in range(9):
-            posy = 0 if y == 0 else self.vlines[y - 1][0]
-
+            posy = 0 if y == 0 else self.vlines[y - 1][0] + 2
             for x in range(9):
-                posx = 0 if x == 0 else self.hlines[x - 1][1]
+                posx = 0 if x == 0 else self.hlines[x - 1][1] + 3
                 cropped_img = self.colored_img[posy:posy + block, posx:posx + block]
 
-    def parse_image(self):
-        self.load_image()
-        self.detect_lines()
-        self.detect_numbers()
+                detected = pytesseract.image_to_string(cropped_img, lang="eng", config="--psm 10")[0]
+                if detected == 'S': detected = '8' # Tesseract falsely classifies S for 8, S for 5, etc.
 
-        self.debug_lines()
-        opencv.waitKey(0)
+                digit = int(detected) if detected.isdigit() else 0
+                self.parsed_board[y][x].load(x, y, digit)
