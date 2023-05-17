@@ -1,14 +1,22 @@
+Sudoku solver using computer vision in ~200 lines:
+
+[Input](input_puzzle.png)
+[Output](solved_puzzle.png)
+
 cvision.Puzzle():
     - Scale and convert image to greyscale
-    - Apply adaptive gaussian binary thresholding
+    - Apply adaptive Gaussian binary thresholding
     - Apply Canny edge detection
     - Use Hough Lines algorithm to detect lines
     - Crop sudoku cells using detected lines
     - Use OCR to detect the numbers populating the cells
         - Using Google's Tesseract OCR with the pytesseract bindings.
     - Pass sudoku board to the sudoku solver
+    - Write the solved board back into the input image!
 
-solver.Solver()
+solver.Solver():
+    - Solve the sudoku puzzle using backtracking
+    - https://en.wikipedia.org/wiki/Sudoku_solving_algorithms
 
 If I were to come back to this project:
     - Optimize the OCR
